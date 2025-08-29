@@ -1,0 +1,173 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(0 0% 100%);
+  --foreground: hsl(0 0% 0%);
+  --card: hsl(0 0% 98%);
+  --card-foreground: hsl(0 0% 0%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(0 0% 0%);
+  --primary: hsl(325 79% 66%); /* PWC Pink #E669A2 */
+  --primary-foreground: hsl(0 0% 100%);
+  --secondary: hsl(46 91% 55%); /* PWC Yellow #F3BE26 */
+  --secondary-foreground: hsl(0 0% 0%);
+  --muted: hsl(0 0% 96%);
+  --muted-foreground: hsl(0 0% 45%);
+  --accent: hsl(32 92% 48%); /* PWC Orange #E88D14 */
+  --accent-foreground: hsl(0 0% 100%);
+  --destructive: hsl(12 98% 34%); /* PWC Red #AD1B02 */
+  --destructive-foreground: hsl(0 0% 100%);
+  --border: hsl(0 0% 90%);
+  --input: hsl(0 0% 96%);
+  --ring: hsl(325 79% 66%);
+  --radius: 0.75rem;
+
+  /* PWC Brand Colors */
+  --pwc-pink: hsl(325 79% 66%); /* #E669A2 */
+  --pwc-yellow: hsl(46 91% 55%); /* #F3BE26 */
+  --pwc-light-orange: hsl(32 92% 48%); /* #E88D14 */
+  --pwc-dark-orange: hsl(13 90% 47%); /* #DB4E18 */
+  --pwc-red: hsl(12 98% 34%); /* #AD1B02 */
+  --pwc-black: hsl(0 0% 0%); /* #000000 */
+  
+  /* PWC gradient backgrounds */
+  --pwc-gradient-primary: linear-gradient(135deg, var(--pwc-pink) 0%, var(--pwc-light-orange) 100%);
+  --pwc-gradient-warm: linear-gradient(135deg, var(--pwc-yellow) 0%, var(--pwc-light-orange) 100%);
+  --pwc-gradient-vibrant: linear-gradient(135deg, var(--pwc-pink) 0%, var(--pwc-yellow) 50%, var(--pwc-light-orange) 100%);
+
+  --font-inter: 'Inter', sans-serif;
+}
+
+.dark {
+  --background: hsl(0 0% 8%);
+  --foreground: hsl(0 0% 95%);
+  --card: hsl(0 0% 12%);
+  --card-foreground: hsl(0 0% 95%);
+  --popover: hsl(0 0% 8%);
+  --popover-foreground: hsl(0 0% 95%);
+  --primary: hsl(325 79% 66%); /* PWC Pink maintains in dark */
+  --primary-foreground: hsl(0 0% 0%);
+  --secondary: hsl(46 91% 55%); /* PWC Yellow maintains in dark */
+  --secondary-foreground: hsl(0 0% 0%);
+  --muted: hsl(0 0% 16%);
+  --muted-foreground: hsl(0 0% 65%);
+  --accent: hsl(32 92% 48%); /* PWC Orange maintains in dark */
+  --accent-foreground: hsl(0 0% 0%);
+  --destructive: hsl(12 98% 50%); /* Brighter PWC red for dark mode */
+  --destructive-foreground: hsl(0 0% 0%);
+  --border: hsl(0 0% 20%);
+  --input: hsl(0 0% 16%);
+  --ring: hsl(325 79% 66%);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+    font-family: var(--font-inter);
+  }
+}
+
+@layer utilities {
+  .font-inter {
+    font-family: var(--font-inter);
+  }
+  
+  /* PWC utility classes */
+  .pwc-gradient-primary {
+    background: var(--pwc-gradient-primary);
+  }
+  
+  .pwc-gradient-warm {
+    background: var(--pwc-gradient-warm);
+  }
+  
+  .pwc-gradient-vibrant {
+    background: var(--pwc-gradient-vibrant);
+  }
+  
+  .pwc-text-gradient {
+    background: var(--pwc-gradient-primary);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  
+  .pwc-shadow-primary {
+    box-shadow: 0 4px 20px rgba(230, 105, 162, 0.25);
+  }
+  
+  .pwc-shadow-accent {
+    box-shadow: 0 4px 20px rgba(232, 141, 20, 0.25);
+  }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* React Flow styles */
+.react-flow__node {
+  font-family: var(--font-inter);
+}
+
+.react-flow__edge-path {
+  stroke: hsl(var(--primary));
+  stroke-width: 2;
+}
+
+.react-flow__connection-line {
+  stroke: hsl(var(--primary));
+  stroke-width: 2;
+  stroke-dasharray: 5,5;
+}
+
+/* Loading animation */
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 2s ease-in-out infinite;
+}
+
+/* Drop zone styles */
+.drop-zone-active {
+  @apply border-blue-500 bg-blue-50;
+}
+
+.drop-zone-active::after {
+  content: '';
+  @apply absolute inset-0 bg-blue-100 rounded-xl;
+}
+
+/* Editable content styles */
+[data-editable]:hover {
+  @apply outline-2 outline-dashed outline-blue-500 outline-offset-2;
+}
+
+[data-editable].editing {
+  @apply outline-2 outline outline-blue-500 outline-offset-2;
+}

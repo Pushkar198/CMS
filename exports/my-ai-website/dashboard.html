@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CUB Bank Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+<style>
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+}
+
+/* Sidebar */
+#sidebar {
+    width: 250px;
+    height: 100vh;
+    background-color: #2a3d66;
+    position: fixed;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
+    color: white;
+    padding: 20px;
+}
+
+#sidebar h2 {
+    text-align: center;
+    margin-top: 0;
+}
+
+#sidebar nav a {
+    display: block;
+    color: white;
+    padding: 10px;
+    text-decoration: none;
+    margin: 10px 0;
+}
+
+#sidebar nav a:hover {
+    background-color: #1a2b4c;
+}
+
+/* Main content */
+#main {
+    margin-left: 250px;
+    padding: 20px;
+}
+
+header {
+    background-color: #f4f6fc;
+    padding: 10px;
+    border-bottom: 1px solid #cccccc;
+}
+
+header h1 {
+    margin: 0;
+}
+
+#content {
+    margin-top: 20px;
+}
+</style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div id="sidebar">
+        <h2>CUB Bank</h2>
+        <nav>
+            <a href="#" onclick="loadContent('overview')">Overview</a>
+            <a href="#" onclick="loadContent('accounts')">Accounts</a>
+            <a href="#" onclick="loadContent('transactions')">Transactions</a>
+            <a href="#" onclick="loadContent('settings')">Settings</a>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div id="main">
+        <header>
+            <h1>Dashboard</h1>
+        </header>
+        <div id="content">
+            <p>Welcome to the City Union Bank Dashboard!</p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+<script>
+function loadContent(section) {
+    const contentArea = document.getElementById('content');
+    
+    switch (section) {
+        case 'overview':
+            contentArea.innerHTML = '<h2>Overview</h2><p>Account overview information goes here...</p>';
+            break;
+        case 'accounts':
+            contentArea.innerHTML = '<h2>Accounts</h2><p>Details about your accounts go here...</p>';
+            break;
+        case 'transactions':
+            contentArea.innerHTML = '<h2>Transactions</h2><p>Transaction history and details go here...</p>';
+            break;
+        case 'settings':
+            contentArea.innerHTML = '<h2>Settings</h2><p>Account settings and options go here...</p>';
+            break;
+        default:
+            contentArea.innerHTML = '<h2>Welcome</h2><p>Welcome to the City Union Bank Dashboard!</p>';
+    }
+}
+</script>
+</body>
+</html>
