@@ -55,7 +55,7 @@ export default function UploadZone({ onFileUpload, isUploading }: UploadZoneProp
         onChange={handleFileInput}
         className="hidden"
         id="file-upload"
-        accept="image/*,application/pdf"
+        accept="image/*,application/pdf,text/html"
         disabled={isUploading}
       />
       <label htmlFor="file-upload">
@@ -64,7 +64,7 @@ export default function UploadZone({ onFileUpload, isUploading }: UploadZoneProp
         </Button>
       </label>
       <p className="text-sm text-slate-400 mt-3">
-        Supports: JPG, PNG, GIF, SVG, PDF (Max 10MB)
+        Supports: JPG, PNG, GIF, SVG, PDF, HTML (Max 10MB)
       </p>
     </div>
   );

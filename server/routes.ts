@@ -6,6 +6,8 @@ import { generatePageWithAI, generatePageThumbnail } from "./services/gemini";
 import { exportSite } from "./services/export";
 import { generateNavigationScript } from "./services/page-navigation";
 import { extractClickableElements } from "./services/element-extractor";
+import { parseHTMLFile } from "./services/html-parser";
+import { extractWebsiteFromZip } from "./services/website-import";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -28,7 +30,7 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024, // 10MB limit
   },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'application/pdf'];
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'application/pdf', 'text/html', 'application/zip', 'application/x-zip-compressed'];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
@@ -301,6 +303,141 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error deleting media:', error);
       res.status(500).json({ error: 'Failed to delete media' });
+    }
+  });
+
+  // HTML to Pages conversion endpoint
+  app.post('/api/html-to-page', upload.single('htmlFile'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: 'No HTML file uploaded' });
+      }
+
+      if (req.file.mimetype !== 'text/html') {
+        // Clean up uploaded file
+        fs.unlinkSync(req.file.path);
+        return res.status(400).json({ error: 'File must be an HTML file' });
+      }
+
+      const { name, pageType = 'custom', state = 'Draft' } = req.body;
+
+      try {
+        // Parse the HTML file
+        const parsedHTML = parseHTMLFile(req.file.path);
+        
+        // Create page data
+        const pageData = {
+          name: name || parsedHTML.title,
+          state,
+          html: parsedHTML.html,
+          css: parsedHTML.css,
+          js: parsedHTML.js,
+          thumbnail: parsedHTML.thumbnail,
+          pageType,
+        };
+
+        // Create the page
+        const page = await storage.createPage(pageData);
+        
+        // Clean up the uploaded HTML file since we've processed it
+        fs.unlinkSync(req.file.path);
+
+        res.status(201).json({
+          success: true,
+          page,
+          message: `HTML file "${req.file.originalname}" successfully converted to page "${page.name}"`
+        });
+
+      } catch (parseError) {
+        // Clean up uploaded file on parse error
+        fs.unlinkSync(req.file.path);
+        console.error('Error parsing HTML file:', parseError);
+        res.status(400).json({ 
+          error: 'Failed to parse HTML file. Please ensure it\'s a valid HTML document.' 
+        });
+      }
+
+    } catch (error) {
+      console.error('Error processing HTML upload:', error);
+      res.status(500).json({ error: 'Failed to process HTML file' });
+    }
+  });
+
+  // Website Import endpoint (ZIP file containing multiple HTML files)
+  app.post('/api/import-website', upload.single('websiteFile'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: 'No website file uploaded' });
+      }
+
+      const allowedZipTypes = ['application/zip', 'application/x-zip-compressed'];
+      if (!allowedZipTypes.includes(req.file.mimetype)) {
+        // Clean up uploaded file
+        fs.unlinkSync(req.file.path);
+        return res.status(400).json({ error: 'File must be a ZIP archive' });
+      }
+
+      const { projectName } = req.body;
+
+      try {
+        // Extract website from ZIP
+        const websiteProject = extractWebsiteFromZip(req.file.path, projectName);
+        
+        if (websiteProject.pages.length === 0) {
+          fs.unlinkSync(req.file.path);
+          return res.status(400).json({ 
+            error: 'No HTML files found in the ZIP archive. Please ensure your ZIP contains .html files.' 
+          });
+        }
+
+        // Create pages from the website project
+        const createdPages = [];
+        for (const websitePage of websiteProject.pages) {
+          const pageData = {
+            name: websitePage.title || websitePage.filename.replace('.html', ''),
+            state: 'Draft' as const,
+            html: websitePage.html,
+            css: websitePage.css,
+            js: websitePage.js,
+            thumbnail: websitePage.thumbnail,
+            pageType: 'custom' as const,
+          };
+
+          const page = await storage.createPage(pageData);
+          createdPages.push({
+            ...page,
+            originalFilename: websitePage.filename,
+            relativePath: websitePage.relativePath
+          });
+        }
+        
+        // Clean up the uploaded ZIP file
+        fs.unlinkSync(req.file.path);
+
+        res.status(201).json({
+          success: true,
+          project: {
+            name: websiteProject.name,
+            description: websiteProject.description,
+            pagesCount: createdPages.length,
+            assetsCount: websiteProject.assets.length
+          },
+          pages: createdPages,
+          message: `Successfully imported ${createdPages.length} pages from "${req.file.originalname}"`
+        });
+
+      } catch (parseError) {
+        // Clean up uploaded file on parse error
+        fs.unlinkSync(req.file.path);
+        console.error('Error processing website ZIP:', parseError);
+        res.status(400).json({ 
+          error: 'Failed to process website ZIP file. Please ensure it contains valid HTML files.' 
+        });
+      }
+
+    } catch (error) {
+      console.error('Error importing website:', error);
+      res.status(500).json({ error: 'Failed to import website' });
     }
   });
 

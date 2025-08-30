@@ -11,7 +11,9 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Sparkles, Info, Clock, Zap, Code, Eye, Edit, RotateCcw, Upload, FileText } from "lucide-react";
+import { useUploadHTML, type HTMLUploadData } from "@/hooks/use-html-upload";
+import { useImportWebsite, type WebsiteImportData } from "@/hooks/use-website-import";
+import { Sparkles, Info, Clock, Zap, Code, Eye, Edit, RotateCcw, Upload, FileText, Globe, Package, FolderOpen } from "lucide-react";
 
 interface GenerationRequest {
   prompt: string;
@@ -55,12 +57,29 @@ export default function AIGenerator() {
     js: ""
   });
 
+  const [htmlUploadData, setHtmlUploadData] = useState<HTMLUploadData>({
+    name: "",
+    pageType: "custom",
+    state: "Draft"
+  });
+
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  const [websiteImportData, setWebsiteImportData] = useState<WebsiteImportData>({
+    projectName: ""
+  });
+
+  const [selectedZipFile, setSelectedZipFile] = useState<File | null>(null);
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: generations } = useQuery<any[]>({
     queryKey: ["/api/generations"],
   });
+
+  const htmlUploadMutation = useUploadHTML();
+  const websiteImportMutation = useImportWebsite();
 
   const generateMutation = useMutation({
     mutationFn: async (data: GenerationRequest) => {
@@ -166,6 +185,128 @@ export default function AIGenerator() {
     uploadMutation.mutate(uploadData);
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type === 'text/html') {
+      setSelectedFile(file);
+      // Auto-fill name from filename if not set
+      if (!htmlUploadData.name) {
+        setHtmlUploadData(prev => ({
+          ...prev,
+          name: file.name.replace('.html', '')
+        }));
+      }
+    } else {
+      toast({
+        title: "Invalid file type",
+        description: "Please select an HTML file.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleHTMLUpload = async () => {
+    if (!selectedFile) {
+      toast({
+        title: "No file selected",
+        description: "Please select an HTML file to upload.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const result = await htmlUploadMutation.mutateAsync({
+        file: selectedFile,
+        uploadData: htmlUploadData
+      });
+
+      toast({
+        title: "HTML file uploaded successfully!",
+        description: result.message,
+      });
+
+      // Reset form
+      setSelectedFile(null);
+      setHtmlUploadData({
+        name: "",
+        pageType: "custom",
+        state: "Draft"
+      });
+
+      // Clear file input
+      const fileInput = document.getElementById('html-file-input') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
+
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error.message || "Failed to upload HTML file",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleZipFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && (file.type === 'application/zip' || file.type === 'application/x-zip-compressed')) {
+      setSelectedZipFile(file);
+      // Auto-fill project name from filename if not set
+      if (!websiteImportData.projectName) {
+        setWebsiteImportData(prev => ({
+          ...prev,
+          projectName: file.name.replace('.zip', '')
+        }));
+      }
+    } else {
+      toast({
+        title: "Invalid file type",
+        description: "Please select a ZIP file containing your website.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleWebsiteImport = async () => {
+    if (!selectedZipFile) {
+      toast({
+        title: "No file selected",
+        description: "Please select a ZIP file to import.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const result = await websiteImportMutation.mutateAsync({
+        file: selectedZipFile,
+        importData: websiteImportData
+      });
+
+      toast({
+        title: "Website imported successfully!",
+        description: result.message,
+      });
+
+      // Reset form
+      setSelectedZipFile(null);
+      setWebsiteImportData({
+        projectName: ""
+      });
+
+      // Clear file input
+      const fileInput = document.getElementById('zip-file-input') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
+
+    } catch (error: any) {
+      toast({
+        title: "Import failed",
+        description: error.message || "Failed to import website",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <>
       {/* Header */}
@@ -188,7 +329,7 @@ export default function AIGenerator() {
         <div className="max-w-4xl mx-auto space-y-6">
           {/* Tabs for generation methods */}
           <Tabs defaultValue="ai-generate" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="ai-generate" className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4" />
                 AI Generation
@@ -196,6 +337,14 @@ export default function AIGenerator() {
               <TabsTrigger value="manual-upload" className="flex items-center gap-2">
                 <Upload className="w-4 h-4" />
                 Manual Upload
+              </TabsTrigger>
+              <TabsTrigger value="html-upload" className="flex items-center gap-2">
+                <Globe className="w-4 h-4" />
+                HTML Upload
+              </TabsTrigger>
+              <TabsTrigger value="website-import" className="flex items-center gap-2">
+                <Package className="w-4 h-4" />
+                Website Import
               </TabsTrigger>
             </TabsList>
 
@@ -476,6 +625,226 @@ Example: Create a modern landing page for a SaaS product with:
                       <>
                         <Upload className="mr-2 h-4 w-4" />
                         Create Page from Upload
+                      </>
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* HTML Upload Tab */}
+            <TabsContent value="html-upload">
+              <Card>
+                <CardHeader className="bg-gradient-to-r from-gray-50 to-white">
+                  <CardTitle className="text-xl font-bold text-gray-900">Upload HTML File</CardTitle>
+                  <p className="text-sm text-gray-600 font-medium">Upload an existing HTML file and convert it to a manageable page</p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="html-page-name">Page Name</Label>
+                      <Input
+                        id="html-page-name"
+                        placeholder="Enter page name (auto-filled from filename)"
+                        value={htmlUploadData.name}
+                        onChange={(e) => setHtmlUploadData(prev => ({ ...prev, name: e.target.value }))}
+                        data-testid="input-html-page-name"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="html-page-type">Page Type</Label>
+                      <Select 
+                        value={htmlUploadData.pageType} 
+                        onValueChange={(value) => setHtmlUploadData(prev => ({ ...prev, pageType: value }))}
+                      >
+                        <SelectTrigger data-testid="select-html-page-type">
+                          <SelectValue placeholder="Select page type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="custom">Custom</SelectItem>
+                          <SelectItem value="landing">Landing Page</SelectItem>
+                          <SelectItem value="dashboard">Dashboard</SelectItem>
+                          <SelectItem value="form">Form</SelectItem>
+                          <SelectItem value="blog">Blog</SelectItem>
+                          <SelectItem value="portfolio">Portfolio</SelectItem>
+                          <SelectItem value="ecommerce">E-commerce</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="html-file-input">HTML File</Label>
+                    <div className="mt-2">
+                      <input
+                        id="html-file-input"
+                        type="file"
+                        accept=".html,text/html"
+                        onChange={handleFileUpload}
+                        className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary file:text-white hover:file:bg-primary/90"
+                        data-testid="input-html-file"
+                      />
+                      {selectedFile && (
+                        <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-md">
+                          <div className="flex items-center">
+                            <FileText className="h-4 w-4 text-green-600 mr-2" />
+                            <span className="text-sm text-green-800 font-medium">{selectedFile.name}</span>
+                            <span className="text-sm text-green-600 ml-2">({(selectedFile.size / 1024).toFixed(1)} KB)</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="html-initial-state">Initial State</Label>
+                    <Select 
+                      value={htmlUploadData.state} 
+                      onValueChange={(value) => setHtmlUploadData(prev => ({ ...prev, state: value }))}
+                    >
+                      <SelectTrigger data-testid="select-html-initial-state">
+                        <SelectValue placeholder="Select initial state" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Draft">Draft</SelectItem>
+                        <SelectItem value="Live">Live</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex">
+                      <Info className="h-5 w-5 text-blue-600 mr-2 mt-0.5" />
+                      <div>
+                        <h4 className="text-sm font-medium text-blue-900">What happens when you upload?</h4>
+                        <ul className="text-sm text-blue-700 mt-1 space-y-1">
+                          <li>• HTML structure is extracted and cleaned</li>
+                          <li>• CSS styles are consolidated from &lt;style&gt; tags and linked files</li>
+                          <li>• JavaScript is extracted from &lt;script&gt; tags</li>
+                          <li>• Page becomes available in the Flow Editor for linking</li>
+                          <li>• All existing page management features are enabled</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button 
+                    onClick={handleHTMLUpload} 
+                    className="w-full" 
+                    disabled={htmlUploadMutation.isPending || !selectedFile}
+                    size="lg"
+                    data-testid="button-upload-html"
+                  >
+                    {htmlUploadMutation.isPending ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Processing HTML...
+                      </>
+                    ) : (
+                      <>
+                        <Globe className="mr-2 h-4 w-4" />
+                        Convert HTML to Page
+                      </>
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Website Import Tab */}
+            <TabsContent value="website-import">
+              <Card>
+                <CardHeader className="bg-gradient-to-r from-gray-50 to-white">
+                  <CardTitle className="text-xl font-bold text-gray-900">Import Website Project</CardTitle>
+                  <p className="text-sm text-gray-600 font-medium">Upload a ZIP file containing multiple HTML pages and manage them as a project</p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label htmlFor="project-name">Project Name</Label>
+                    <Input
+                      id="project-name"
+                      placeholder="Enter project name (auto-filled from ZIP filename)"
+                      value={websiteImportData.projectName}
+                      onChange={(e) => setWebsiteImportData(prev => ({ ...prev, projectName: e.target.value }))}
+                      data-testid="input-project-name"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="zip-file-input">Website ZIP File</Label>
+                    <div className="mt-2">
+                      <input
+                        id="zip-file-input"
+                        type="file"
+                        accept=".zip,application/zip,application/x-zip-compressed"
+                        onChange={handleZipFileUpload}
+                        className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary file:text-white hover:file:bg-primary/90"
+                        data-testid="input-zip-file"
+                      />
+                      {selectedZipFile && (
+                        <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-md">
+                          <div className="flex items-center">
+                            <Package className="h-4 w-4 text-green-600 mr-2" />
+                            <span className="text-sm text-green-800 font-medium">{selectedZipFile.name}</span>
+                            <span className="text-sm text-green-600 ml-2">({(selectedZipFile.size / 1024).toFixed(1)} KB)</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex">
+                      <Info className="h-5 w-5 text-blue-600 mr-2 mt-0.5" />
+                      <div>
+                        <h4 className="text-sm font-medium text-blue-900">Website Import Process</h4>
+                        <ul className="text-sm text-blue-700 mt-1 space-y-1">
+                          <li>• Extracts all HTML files from your ZIP archive</li>
+                          <li>• Processes CSS and JavaScript from each page</li>
+                          <li>• Creates individual manageable pages</li>
+                          <li>• Preserves file structure and relationships</li>
+                          <li>• All pages are available for linking in Flow Editor</li>
+                          <li>• Supports folders and nested HTML structures</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <div className="flex">
+                      <FolderOpen className="h-5 w-5 text-amber-600 mr-2 mt-0.5" />
+                      <div>
+                        <h4 className="text-sm font-medium text-amber-900">Supported ZIP Structure</h4>
+                        <div className="text-sm text-amber-700 mt-1">
+                          <p>Your ZIP file can contain:</p>
+                          <ul className="mt-2 space-y-1 ml-4">
+                            <li>• index.html, about.html, contact.html (root level)</li>
+                            <li>• css/ folder with stylesheets</li>
+                            <li>• js/ folder with JavaScript files</li>
+                            <li>• images/ folder with assets</li>
+                            <li>• pages/ subfolder with additional HTML files</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button 
+                    onClick={handleWebsiteImport} 
+                    className="w-full" 
+                    disabled={websiteImportMutation.isPending || !selectedZipFile}
+                    size="lg"
+                    data-testid="button-import-website"
+                  >
+                    {websiteImportMutation.isPending ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Importing Website...
+                      </>
+                    ) : (
+                      <>
+                        <Package className="mr-2 h-4 w-4" />
+                        Import Website Project
                       </>
                     )}
                   </Button>
