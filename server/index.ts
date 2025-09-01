@@ -1,10 +1,24 @@
 import express, { type Request, Response, NextFunction } from "express";
+import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Session management - using memory store for development
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'development-secret-key',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: false, // Set to false for development (http)
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+  },
+}));
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -38,6 +52,15 @@ app.use((req, res, next) => {
 
 (async () => {
   const server = await registerRoutes(app);
+  
+  // Initialize dummy users on startup
+  try {
+    const { storage } = await import('./storage');
+    await storage.initializeDummyUsers();
+    log('Dummy users initialized on startup');
+  } catch (error) {
+    console.error('Failed to initialize dummy users:', error);
+  }
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

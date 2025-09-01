@@ -1,7 +1,9 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import bcrypt from "bcryptjs";
 import { storage } from "./storage";
-import { insertPageSchema, insertLinkSchema, insertMediaSchema, insertGenerationSchema, insertComponentSchema, insertPageComponentSchema, type InsertPage } from "@shared/schema";
+import { insertPageSchema, insertLinkSchema, insertMediaSchema, insertGenerationSchema, insertComponentSchema, insertPageComponentSchema, type InsertPage, users } from "@shared/schema";
+import "./types";
 import { generatePageWithAI, generatePageThumbnail } from "./services/gemini";
 import { exportSite } from "./services/export";
 import { generateNavigationScript } from "./services/page-navigation";
@@ -39,7 +41,96 @@ const upload = multer({
   }
 });
 
+// Authentication middleware
+function requireAuth(req: any, res: any, next: any) {
+  if (!req.session?.userId) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  next();
+}
+
+function requireRole(roles: string[]) {
+  return (req: any, res: any, next: any) => {
+    if (!req.session?.userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    if (!roles.includes(req.session.userRole)) {
+      return res.status(403).json({ error: 'Insufficient permissions' });
+    }
+    next();
+  };
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Authentication routes
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({ error: 'Username and password required' });
+      }
+
+      const user = await storage.getUserByUsername(username);
+      if (!user) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+
+      const isValidPassword = await bcrypt.compare(password, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+
+      // Set session
+      req.session.userId = user.id;
+      req.session.userRole = user.role;
+      req.session.username = user.username;
+
+      res.json({ 
+        success: true, 
+        user: { 
+          id: user.id, 
+          username: user.username, 
+          role: user.role 
+        } 
+      });
+    } catch (error) {
+      console.error('Login error:', error);
+      res.status(500).json({ error: 'Login failed' });
+    }
+  });
+
+  app.post('/api/auth/logout', (req, res) => {
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ error: 'Logout failed' });
+      }
+      res.json({ success: true });
+    });
+  });
+
+  app.get('/api/auth/me', (req, res) => {
+    if (!req.session?.userId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    
+    res.json({
+      id: req.session.userId,
+      username: req.session.username,
+      role: req.session.userRole
+    });
+  });
+
+  // Initialize dummy users route
+  app.post('/api/auth/init-users', async (req, res) => {
+    try {
+      await storage.initializeDummyUsers();
+      res.json({ message: 'Dummy users created successfully' });
+    } catch (error) {
+      console.error('Error creating dummy users:', error);
+      res.status(500).json({ error: 'Failed to create dummy users' });
+    }
+  });
   // Pages routes
   app.get('/api/pages', async (req, res) => {
     try {
@@ -86,10 +177,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/pages/:id', async (req, res) => {
+  app.put('/api/pages/:id', requireAuth, async (req, res) => {
     try {
       const validatedData = insertPageSchema.partial().parse(req.body);
-      const page = await storage.updatePage(req.params.id, validatedData);
+      const page = await storage.updatePage(req.params.id, validatedData, req.session.userId);
       if (!page) {
         return res.status(404).json({ error: 'Page not found' });
       }
@@ -125,11 +216,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updateData.expireAt = new Date();
       }
 
-      const page = await storage.updatePage(req.params.id, updateData);
+      const page = await storage.updatePage(req.params.id, updateData, req.session?.userId);
       res.json(page);
     } catch (error) {
       console.error('Error updating page state:', error);
       res.status(500).json({ error: 'Failed to update page state' });
+    }
+  });
+
+  // Page version management routes
+  app.get('/api/pages/:id/versions', requireAuth, async (req, res) => {
+    try {
+      const versions = await storage.getPageVersions(req.params.id);
+      res.json(versions);
+    } catch (error) {
+      console.error('Error fetching page versions:', error);
+      res.status(500).json({ error: 'Failed to fetch page versions' });
+    }
+  });
+
+  app.get('/api/versions/:versionId', requireAuth, async (req, res) => {
+    try {
+      const version = await storage.getPageVersion(req.params.versionId);
+      if (!version) {
+        return res.status(404).json({ error: 'Version not found' });
+      }
+      res.json(version);
+    } catch (error) {
+      console.error('Error fetching version:', error);
+      res.status(500).json({ error: 'Failed to fetch version' });
+    }
+  });
+
+  app.post('/api/pages/:id/rollback', requireRole(['checker', 'admin']), async (req, res) => {
+    try {
+      const { versionId } = req.body;
+      if (!versionId) {
+        return res.status(400).json({ error: 'Version ID is required' });
+      }
+
+      const page = await storage.rollbackToVersion(req.params.id, versionId, req.session.userId);
+      if (!page) {
+        return res.status(404).json({ error: 'Page or version not found' });
+      }
+
+      res.json({ 
+        success: true, 
+        page,
+        message: 'Page rolled back successfully. Page is now in Draft state for review.' 
+      });
+    } catch (error) {
+      console.error('Error rolling back page:', error);
+      res.status(500).json({ error: 'Failed to rollback page' });
     }
   });
 

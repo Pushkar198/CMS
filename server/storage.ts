@@ -1,11 +1,13 @@
-import { type Page, type InsertPage, type Link, type InsertLink, type Media, type InsertMedia, type Generation, type InsertGeneration, type User, type InsertUser, type Component, type InsertComponent, type PageComponent, type InsertPageComponent } from "@shared/schema";
+import { type Page, type InsertPage, type Link, type InsertLink, type Media, type InsertMedia, type Generation, type InsertGeneration, type User, type InsertUser, type Component, type InsertComponent, type PageComponent, type InsertPageComponent, type PageVersion, type InsertPageVersion } from "@shared/schema";
 import { randomUUID } from "crypto";
+import bcrypt from "bcryptjs";
 
 export interface IStorage {
   // User methods
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  initializeDummyUsers(): Promise<void>;
 
   // Page methods
   getPages(): Promise<Page[]>;
@@ -51,6 +53,12 @@ export interface IStorage {
   getPageComponents(pageId: string): Promise<PageComponent[]>;
   addComponentToPage(pageComponent: InsertPageComponent): Promise<PageComponent>;
   removeComponentFromPage(id: string): Promise<boolean>;
+
+  // Page version methods
+  getPageVersions(pageId: string): Promise<PageVersion[]>;
+  getPageVersion(id: string): Promise<PageVersion | undefined>;
+  createPageVersion(version: InsertPageVersion): Promise<PageVersion>;
+  rollbackToVersion(pageId: string, versionId: string, userId: string): Promise<Page | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -61,6 +69,7 @@ export class MemStorage implements IStorage {
   private generations: Map<string, Generation> = new Map();
   private components: Map<string, Component> = new Map();
   private pageComponents: Map<string, PageComponent> = new Map();
+  private pageVersions: Map<string, PageVersion> = new Map();
 
   // User methods
   async getUser(id: string): Promise<User | undefined> {
@@ -78,11 +87,41 @@ export class MemStorage implements IStorage {
     const user: User = { 
       ...insertUser, 
       id,
-      role: insertUser.role || 'creator',
+      role: insertUser.role || 'maker',
       createdAt: new Date()
     };
     this.users.set(id, user);
     return user;
+  }
+
+  async initializeDummyUsers(): Promise<void> {
+    // Clear existing users and create dummy ones
+    this.users.clear();
+    
+    // Hash passwords
+    const hashedPassword = await bcrypt.hash('password123', 10);
+    
+    const dummyUsers = [
+      {
+        username: 'admin',
+        password: hashedPassword,
+        role: 'admin' as const,
+      },
+      {
+        username: 'maker',
+        password: hashedPassword,
+        role: 'maker' as const,
+      },
+      {
+        username: 'checker',
+        password: hashedPassword,
+        role: 'checker' as const,
+      },
+    ];
+
+    for (const userData of dummyUsers) {
+      await this.createUser(userData);
+    }
   }
 
   // Page methods
@@ -118,9 +157,25 @@ export class MemStorage implements IStorage {
     return page;
   }
 
-  async updatePage(id: string, updates: Partial<InsertPage>): Promise<Page | undefined> {
+  async updatePage(id: string, updates: Partial<InsertPage>, userId?: string): Promise<Page | undefined> {
     const existing = this.pages.get(id);
     if (!existing) return undefined;
+    
+    // Create a version before updating the page (only if it's a significant change)
+    const hasSignificantChange = updates.html || updates.css || updates.js || updates.name;
+    if (hasSignificantChange) {
+      await this.createPageVersion({
+        pageId: existing.id,
+        versionNumber: await this.getNextVersionNumber(existing.id),
+        name: existing.name,
+        html: existing.html,
+        css: existing.css,
+        js: existing.js,
+        state: existing.state,
+        changeDescription: 'Page updated',
+        createdBy: userId || null,
+      });
+    }
     
     const updated: Page = { ...existing, ...updates };
     this.pages.set(id, updated);
@@ -356,6 +411,71 @@ export class MemStorage implements IStorage {
 
   async removeComponentFromPage(id: string): Promise<boolean> {
     return this.pageComponents.delete(id);
+  }
+
+  // Page version methods
+  async getPageVersions(pageId: string): Promise<PageVersion[]> {
+    return Array.from(this.pageVersions.values())
+      .filter(version => version.pageId === pageId)
+      .sort((a, b) => b.versionNumber - a.versionNumber); // Latest first
+  }
+
+  async getPageVersion(id: string): Promise<PageVersion | undefined> {
+    return this.pageVersions.get(id);
+  }
+
+  async createPageVersion(insertVersion: InsertPageVersion): Promise<PageVersion> {
+    const id = randomUUID();
+    const now = new Date();
+    const version: PageVersion = {
+      ...insertVersion,
+      id,
+      createdAt: now,
+      changeDescription: insertVersion.changeDescription || null,
+      createdBy: insertVersion.createdBy || null,
+    };
+    this.pageVersions.set(id, version);
+    return version;
+  }
+
+  async getNextVersionNumber(pageId: string): Promise<number> {
+    const versions = await this.getPageVersions(pageId);
+    return versions.length > 0 ? Math.max(...versions.map(v => v.versionNumber)) + 1 : 1;
+  }
+
+  async rollbackToVersion(pageId: string, versionId: string, userId: string): Promise<Page | undefined> {
+    const version = this.pageVersions.get(versionId);
+    const currentPage = this.pages.get(pageId);
+    
+    if (!version || !currentPage || version.pageId !== pageId) {
+      return undefined;
+    }
+
+    // Create a version of the current state before rollback
+    await this.createPageVersion({
+      pageId: currentPage.id,
+      versionNumber: await this.getNextVersionNumber(currentPage.id),
+      name: currentPage.name,
+      html: currentPage.html,
+      css: currentPage.css,
+      js: currentPage.js,
+      state: currentPage.state,
+      changeDescription: `Rollback to version ${version.versionNumber}`,
+      createdBy: userId,
+    });
+
+    // Update page with version data
+    const rollbackPage: Page = {
+      ...currentPage,
+      name: version.name,
+      html: version.html,
+      css: version.css,
+      js: version.js,
+      state: 'Draft', // Always set to Draft after rollback for review
+    };
+    
+    this.pages.set(pageId, rollbackPage);
+    return rollbackPage;
   }
 }
 

@@ -6,8 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { CheckCircle, XCircle, Clock, Eye } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Eye, History } from "lucide-react";
 import { useState } from "react";
+import { VersionHistory } from "@/components/versions/version-history";
 
 interface Page {
   id: string;
@@ -23,6 +24,7 @@ export default function ApprovalDashboard() {
   const queryClient = useQueryClient();
   const [rejectionReason, setRejectionReason] = useState("");
   const [selectedPageForRejection, setSelectedPageForRejection] = useState<string | null>(null);
+  const [selectedPageForVersions, setSelectedPageForVersions] = useState<string | null>(null);
 
   // Fetch pages pending approval
   const { data: pendingPages, isLoading: isLoadingPending } = useQuery<Page[]>({
@@ -210,6 +212,35 @@ export default function ApprovalDashboard() {
                       <Eye className="w-4 h-4 mr-1" />
                       Preview
                     </Button>
+                    
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedPageForVersions(page.id)}
+                          data-testid={`button-versions-${page.id}`}
+                        >
+                          <History className="w-4 h-4 mr-1" />
+                          Versions
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                        <DialogHeader>
+                          <DialogTitle>Version History</DialogTitle>
+                        </DialogHeader>
+                        {selectedPageForVersions && (
+                          <VersionHistory 
+                            pageId={selectedPageForVersions} 
+                            pageName={page.name}
+                            onVersionRollback={() => {
+                              queryClient.invalidateQueries({ queryKey: ['/api/pages'] });
+                              queryClient.invalidateQueries({ queryKey: ['/api/pages/pending-approval'] });
+                            }}
+                          />
+                        )}
+                      </DialogContent>
+                    </Dialog>
                     
                     <Button
                       onClick={() => handleApprove(page.id)}

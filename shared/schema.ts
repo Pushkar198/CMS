@@ -73,6 +73,21 @@ export const pageComponents = pgTable("page_components", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Page versions table for version control and rollback functionality
+export const pageVersions = pgTable("page_versions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  pageId: varchar("page_id").notNull().references(() => pages.id),
+  versionNumber: integer("version_number").notNull(),
+  name: text("name").notNull(),
+  html: text("html").notNull(),
+  css: text("css").notNull(),
+  js: text("js").notNull(),
+  state: text("state").notNull(),
+  changeDescription: text("change_description"), // Optional description of what changed
+  createdBy: varchar("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Insert schemas
 export const insertPageSchema = createInsertSchema(pages).omit({
   id: true,
@@ -104,6 +119,11 @@ export const insertPageComponentSchema = createInsertSchema(pageComponents).omit
   createdAt: true,
 });
 
+export const insertPageVersionSchema = createInsertSchema(pageVersions).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type Page = typeof pages.$inferSelect;
 export type InsertPage = z.infer<typeof insertPageSchema>;
@@ -117,13 +137,15 @@ export type Component = typeof components.$inferSelect;
 export type InsertComponent = z.infer<typeof insertComponentSchema>;
 export type PageComponent = typeof pageComponents.$inferSelect;
 export type InsertPageComponent = z.infer<typeof insertPageComponentSchema>;
+export type PageVersion = typeof pageVersions.$inferSelect;
+export type InsertPageVersion = z.infer<typeof insertPageVersionSchema>;
 
 // Users table (keeping existing)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
-  role: text("role").notNull().default("creator"), // creator, approver, admin
+  role: text("role").notNull().default("maker"), // maker, checker, admin
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
