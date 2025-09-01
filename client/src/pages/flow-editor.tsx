@@ -12,16 +12,39 @@ import ReactFlow, {
 import "reactflow/dist/style.css";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { usePages } from "@/hooks/use-pages";
-import { useComponents, useCreateComponent, useAddComponentToPage } from "@/hooks/use-components";
+import {
+  useComponents,
+  useCreateComponent,
+  useAddComponentToPage,
+} from "@/hooks/use-components";
 import { useLinks, useCreateLink } from "@/hooks/use-links";
 import FlowNode from "@/components/flow/flow-node";
-import { ZoomIn, ZoomOut, Save, Plus, Component as ComponentIcon, Link2 } from "lucide-react";
+import {
+  ZoomIn,
+  ZoomOut,
+  Save,
+  Plus,
+  Component as ComponentIcon,
+  Link2,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const nodeTypes = {
@@ -38,17 +61,17 @@ export default function FlowEditor() {
   const { toast } = useToast();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  
+
   // Component creation state
   const [selectedPage, setSelectedPage] = useState<string>("");
   const [componentName, setComponentName] = useState("");
   const [componentSelector, setComponentSelector] = useState("");
   const [componentDescription, setComponentDescription] = useState("");
-  
+
   // Component addition state
   const [targetPageId, setTargetPageId] = useState<string>("");
   const [selectedComponentId, setSelectedComponentId] = useState<string>("");
-  
+
   // Page linking state
   const [fromPageId, setFromPageId] = useState<string>("");
   const [toPageId, setToPageId] = useState<string>("");
@@ -60,10 +83,10 @@ export default function FlowEditor() {
     if (pages) {
       const generatedNodes = pages.map((page, index) => ({
         id: page.id,
-        type: 'pageNode',
-        position: { 
-          x: 100 + (index % 3) * 350, 
-          y: 100 + Math.floor(index / 3) * 250 
+        type: "pageNode",
+        position: {
+          x: 100 + (index % 3) * 350,
+          y: 100 + Math.floor(index / 3) * 250,
         },
         data: { page },
       }));
@@ -74,15 +97,19 @@ export default function FlowEditor() {
   // Generate edges from page navigation links
   React.useEffect(() => {
     if (links) {
-      const generatedEdges = links.map(link => ({
+      const generatedEdges = links.map((link) => ({
         id: link.id,
         source: link.fromPageId,
         target: link.toPageId,
         label: link.triggerText,
-        type: 'smoothstep',
-        style: { stroke: '#3b82f6', strokeWidth: 2 },
-        labelStyle: { fontSize: '12px', fontWeight: 'bold' },
-        labelBgStyle: { fill: '#dbeafe', padding: '2px 4px', borderRadius: '4px' },
+        type: "smoothstep",
+        style: { stroke: "#3b82f6", strokeWidth: 2 },
+        labelStyle: { fontSize: "12px", fontWeight: "bold" },
+        labelBgStyle: {
+          fill: "#dbeafe",
+          padding: "2px 4px",
+          borderRadius: "4px",
+        },
       }));
 
       setEdges(generatedEdges);
@@ -91,7 +118,7 @@ export default function FlowEditor() {
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
-    [setEdges]
+    [setEdges],
   );
 
   // Function to extract component from page
@@ -105,7 +132,7 @@ export default function FlowEditor() {
       return;
     }
 
-    const sourcePage = pages?.find(p => p.id === selectedPage);
+    const sourcePage = pages?.find((p) => p.id === selectedPage);
     if (!sourcePage) {
       toast({
         title: "Page not found",
@@ -120,14 +147,14 @@ export default function FlowEditor() {
       name: componentName,
       sourcePageId: selectedPage,
       selector: componentSelector,
-      html: `<div class="${componentName.toLowerCase().replace(/\s+/g, '-')}-component">
+      html: `<div class="${componentName.toLowerCase().replace(/\s+/g, "-")}-component">
   <!-- Extracted from ${sourcePage.name} using selector: ${componentSelector} -->
   <div class="component-content">
     <!-- Component content would be extracted here -->
     <p>Reusable ${componentName} component</p>
   </div>
 </div>`,
-      css: `.${componentName.toLowerCase().replace(/\s+/g, '-')}-component {
+      css: `.${componentName.toLowerCase().replace(/\s+/g, "-")}-component {
   padding: 1rem;
   border: 1px solid #e2e8f0;
   border-radius: 0.5rem;
@@ -135,7 +162,7 @@ export default function FlowEditor() {
   margin: 1rem 0;
 }
 
-.${componentName.toLowerCase().replace(/\s+/g, '-')}-component .component-content {
+.${componentName.toLowerCase().replace(/\s+/g, "-")}-component .component-content {
   /* Component-specific styles */
 }`,
       description: componentDescription,
@@ -181,8 +208,8 @@ export default function FlowEditor() {
 
     addComponentToPage(pageComponentData, {
       onSuccess: () => {
-        const component = components?.find(c => c.id === selectedComponentId);
-        const targetPage = pages?.find(p => p.id === targetPageId);
+        const component = components?.find((c) => c.id === selectedComponentId);
+        const targetPage = pages?.find((p) => p.id === targetPageId);
         toast({
           title: "Component added",
           description: `"${component?.name}" added to "${targetPage?.name}"`,
@@ -216,13 +243,13 @@ export default function FlowEditor() {
       toPageId,
       triggerText,
       linkType,
-      fromElementId: `.${triggerText.toLowerCase().replace(/\s+/g, '-')}-trigger`,
+      fromElementId: `.${triggerText.toLowerCase().replace(/\s+/g, "-")}-trigger`,
     };
 
     createLink(linkData, {
       onSuccess: () => {
-        const fromPage = pages?.find(p => p.id === fromPageId);
-        const toPage = pages?.find(p => p.id === toPageId);
+        const fromPage = pages?.find((p) => p.id === fromPageId);
+        const toPage = pages?.find((p) => p.id === toPageId);
         toast({
           title: "Page link created",
           description: `"${triggerText}" on "${fromPage?.name}" now links to "${toPage?.name}"`,
@@ -247,11 +274,15 @@ export default function FlowEditor() {
       <header className="bg-white border-b border-slate-200 px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 font-inter">Page Flow Editor</h1>
-            <p className="text-slate-500 mt-1">Visual page connections and navigation flow</p>
+            <h1 className="text-2xl font-bold text-slate-900 font-inter">
+              Page Flow Editor
+            </h1>
+            <p className="text-slate-500 mt-1">
+              Visual page connections and navigation flow
+            </p>
           </div>
           <div className="flex items-center space-x-3">
-            <Dialog>
+            {/* <Dialog>
               <DialogTrigger asChild>
                 <Button variant="outline">
                   <ComponentIcon className="mr-2 h-4 w-4" />
@@ -265,7 +296,10 @@ export default function FlowEditor() {
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="sourcePage">Source Page</Label>
-                    <Select value={selectedPage} onValueChange={setSelectedPage}>
+                    <Select
+                      value={selectedPage}
+                      onValueChange={setSelectedPage}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select a page" />
                       </SelectTrigger>
@@ -278,7 +312,7 @@ export default function FlowEditor() {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div>
                     <Label htmlFor="componentName">Component Name</Label>
                     <Input
@@ -288,7 +322,7 @@ export default function FlowEditor() {
                       placeholder="Header, Navigation, Footer..."
                     />
                   </div>
-                  
+
                   <div>
                     <Label htmlFor="selector">CSS Selector</Label>
                     <Input
@@ -298,7 +332,7 @@ export default function FlowEditor() {
                       placeholder=".header, #navigation, .card"
                     />
                   </div>
-                  
+
                   <div>
                     <Label htmlFor="description">Description (Optional)</Label>
                     <Textarea
@@ -309,7 +343,7 @@ export default function FlowEditor() {
                       rows={2}
                     />
                   </div>
-                  
+
                   <Button onClick={extractComponent} className="w-full">
                     <Plus className="mr-2 h-4 w-4" />
                     Create Component
@@ -317,7 +351,7 @@ export default function FlowEditor() {
                 </div>
               </DialogContent>
             </Dialog>
-
+ */}
             <Dialog>
               <DialogTrigger asChild>
                 <Button variant="outline">
@@ -327,11 +361,15 @@ export default function FlowEditor() {
               </DialogTrigger>
               <DialogContent className="max-w-md">
                 <DialogHeader>
-                  <DialogTitle>Create Navigation Link Between Pages</DialogTitle>
+                  <DialogTitle>
+                    Create Navigation Link Between Pages
+                  </DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="fromPage">From Page (with clickable element)</Label>
+                    <Label htmlFor="fromPage">
+                      From Page (with clickable element)
+                    </Label>
                     <Select value={fromPageId} onValueChange={setFromPageId}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select source page" />
@@ -345,7 +383,7 @@ export default function FlowEditor() {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div>
                     <Label htmlFor="triggerText">Clickable Element Text</Label>
                     <div className="flex space-x-2">
@@ -355,28 +393,35 @@ export default function FlowEditor() {
                         onChange={(e) => setTriggerText(e.target.value)}
                         placeholder="Settings, About, Contact..."
                       />
-                      <Button 
+                      <Button
                         type="button"
-                        variant="outline" 
+                        variant="outline"
                         size="sm"
                         onClick={async () => {
                           if (!fromPageId) {
-                            alert('Please select a source page first');
+                            alert("Please select a source page first");
                             return;
                           }
                           try {
-                            const response = await fetch(`/api/pages/${fromPageId}/clickable-elements`);
+                            const response = await fetch(
+                              `/api/pages/${fromPageId}/clickable-elements`,
+                            );
                             const elements = await response.json();
-                            
+
                             if (elements.length > 0) {
                               // Show all found elements for user to choose from
-                              const elementTexts = elements.map((el: any) => `${el.text} (${el.type})`).join('\n');
+                              const elementTexts = elements
+                                .map((el: any) => `${el.text} (${el.type})`)
+                                .join("\n");
                               const selectedIndex = prompt(
                                 `Found ${elements.length} clickable elements:\n\n${elementTexts}\n\nEnter the number (1-${elements.length}) to select:`,
-                                '1'
+                                "1",
                               );
-                              
-                              if (selectedIndex && !isNaN(Number(selectedIndex))) {
+
+                              if (
+                                selectedIndex &&
+                                !isNaN(Number(selectedIndex))
+                              ) {
                                 const index = Number(selectedIndex) - 1;
                                 if (index >= 0 && index < elements.length) {
                                   setTriggerText(elements[index].text);
@@ -384,11 +429,15 @@ export default function FlowEditor() {
                                 }
                               }
                             } else {
-                              alert('No clickable elements found on this page. Try generating content with buttons or links first.');
+                              alert(
+                                "No clickable elements found on this page. Try generating content with buttons or links first.",
+                              );
                             }
                           } catch (error) {
-                            console.error('Error extracting elements:', error);
-                            alert('Failed to extract clickable elements. Please try again.');
+                            console.error("Error extracting elements:", error);
+                            alert(
+                              "Failed to extract clickable elements. Please try again.",
+                            );
                           }
                         }}
                       >
@@ -396,13 +445,19 @@ export default function FlowEditor() {
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Click Auto-Extract to find all clickable elements from the selected page
+                      Click Auto-Extract to find all clickable elements from the
+                      selected page
                     </p>
                   </div>
-                  
+
                   <div>
                     <Label htmlFor="linkType">Element Type</Label>
-                    <Select value={linkType} onValueChange={(value: "button" | "link") => setLinkType(value)}>
+                    <Select
+                      value={linkType}
+                      onValueChange={(value: "button" | "link") =>
+                        setLinkType(value)
+                      }
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -412,7 +467,7 @@ export default function FlowEditor() {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div>
                     <Label htmlFor="toPage">To Page (destination)</Label>
                     <Select value={toPageId} onValueChange={setToPageId}>
@@ -428,7 +483,7 @@ export default function FlowEditor() {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <Button onClick={createPageLink} className="w-full">
                     <Link2 className="mr-2 h-4 w-4" />
                     Create Navigation Link
@@ -437,7 +492,7 @@ export default function FlowEditor() {
               </DialogContent>
             </Dialog>
 
-            <Dialog>
+            {/* <Dialog>
               <DialogTrigger asChild>
                 <Button variant="outline">
                   <Plus className="mr-2 h-4 w-4" />
@@ -451,7 +506,10 @@ export default function FlowEditor() {
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="component">Component</Label>
-                    <Select value={selectedComponentId} onValueChange={setSelectedComponentId}>
+                    <Select
+                      value={selectedComponentId}
+                      onValueChange={setSelectedComponentId}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select a component" />
                       </SelectTrigger>
@@ -464,10 +522,13 @@ export default function FlowEditor() {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div>
                     <Label htmlFor="targetPage">Target Page</Label>
-                    <Select value={targetPageId} onValueChange={setTargetPageId}>
+                    <Select
+                      value={targetPageId}
+                      onValueChange={setTargetPageId}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select target page" />
                       </SelectTrigger>
@@ -480,7 +541,7 @@ export default function FlowEditor() {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <Button onClick={addComponentToTargetPage} className="w-full">
                     <Plus className="mr-2 h-4 w-4" />
                     Add Component
@@ -488,7 +549,7 @@ export default function FlowEditor() {
                 </div>
               </DialogContent>
             </Dialog>
-
+ */}
             <Button variant="outline" size="sm">
               <ZoomOut className="mr-2 h-4 w-4" />
               Zoom Out
@@ -500,14 +561,16 @@ export default function FlowEditor() {
             <Button
               onClick={async () => {
                 try {
-                  const response = await fetch('/api/init-dummy-pages', { method: 'POST' });
+                  const response = await fetch("/api/init-dummy-pages", {
+                    method: "POST",
+                  });
                   const result = await response.json();
                   if (response.ok) {
                     // Refresh pages data
                     window.location.reload();
                   }
                 } catch (error) {
-                  console.error('Error creating dummy pages:', error);
+                  console.error("Error creating dummy pages:", error);
                 }
               }}
               variant="outline"
@@ -535,14 +598,23 @@ export default function FlowEditor() {
               {links && links.length > 0 ? (
                 <div className="space-y-3">
                   {links.map((link) => {
-                    const fromPage = pages?.find(p => p.id === link.fromPageId);
-                    const toPage = pages?.find(p => p.id === link.toPageId);
+                    const fromPage = pages?.find(
+                      (p) => p.id === link.fromPageId,
+                    );
+                    const toPage = pages?.find((p) => p.id === link.toPageId);
                     return (
-                      <div key={link.id} className="p-3 border border-blue-200 rounded-lg bg-blue-50">
+                      <div
+                        key={link.id}
+                        className="p-3 border border-blue-200 rounded-lg bg-blue-50"
+                      >
                         <div className="flex items-center space-x-2 text-sm">
-                          <span className="font-medium text-blue-900">{fromPage?.name}</span>
+                          <span className="font-medium text-blue-900">
+                            {fromPage?.name}
+                          </span>
                           <span className="text-blue-600">→</span>
-                          <span className="font-medium text-blue-900">{toPage?.name}</span>
+                          <span className="font-medium text-blue-900">
+                            {toPage?.name}
+                          </span>
                         </div>
                         <div className="text-xs text-blue-700 mt-1">
                           Trigger: "{link.triggerText}" ({link.linkType})
@@ -553,7 +625,8 @@ export default function FlowEditor() {
                 </div>
               ) : (
                 <div className="text-sm text-slate-500 text-center py-4">
-                  No page links created yet. Create navigation flows between your pages.
+                  No page links created yet. Create navigation flows between
+                  your pages.
                 </div>
               )}
             </CardContent>
@@ -567,10 +640,19 @@ export default function FlowEditor() {
               {components && components.length > 0 ? (
                 <div className="space-y-2">
                   {components.map((component) => (
-                    <div key={component.id} className="p-2 border border-slate-200 rounded-lg">
-                      <div className="font-medium text-sm">{component.name}</div>
+                    <div
+                      key={component.id}
+                      className="p-2 border border-slate-200 rounded-lg"
+                    >
+                      <div className="font-medium text-sm">
+                        {component.name}
+                      </div>
                       <div className="text-xs text-slate-500">
-                        From: {pages?.find(p => p.id === component.sourcePageId)?.name}
+                        From:{" "}
+                        {
+                          pages?.find((p) => p.id === component.sourcePageId)
+                            ?.name
+                        }
                       </div>
                       {component.description && (
                         <div className="text-xs text-slate-600 mt-1">
@@ -582,7 +664,8 @@ export default function FlowEditor() {
                 </div>
               ) : (
                 <div className="text-sm text-slate-500 text-center py-4">
-                  No components created yet. Extract components from your pages to reuse them.
+                  No components created yet. Extract components from your pages
+                  to reuse them.
                 </div>
               )}
             </CardContent>
